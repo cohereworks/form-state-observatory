@@ -173,14 +173,19 @@ def test_browser_observations(browser_name):
             # from font geometry, anchor-size, and the positioned meter layout.
             page.goto(BASE_URL+'/experiments/container-query/canary.html',wait_until='load')
             report['cases']['containerQueryCanary'] = page.evaluate("""() => {
-              let ordinary = document.querySelector('#ordinary');
-              let absolute = document.querySelector('#absolute');
+              const names = ['ordinary','absolute','anchorPosition','anchorWidth','anchorBoth'];
+              const probes = Object.fromEntries(names.map(name => {
+                const node = document.getElementById(name);
+                return [name, {
+                  pseudoContent:getComputedStyle(node,'::before').content,
+                  boxWidth:node.parentElement.getBoundingClientRect().width,
+                  containerType:getComputedStyle(node.parentElement).containerType,
+                  matched:getComputedStyle(node,'::before').content === '"matched"'
+                }];
+              }));
               return {
                 syntaxSupported:CSS.supports('container-type:inline-size'),
-                ordinaryValue:getComputedStyle(ordinary,'::before').content,
-                positionedValue:getComputedStyle(absolute,'::before').content,
-                ordinaryParentWidth:ordinary.parentElement.getBoundingClientRect().width,
-                positionedParentWidth:absolute.parentElement.getBoundingClientRect().width
+                probes
               };
             }""")
             page.screenshot(path=str(out/'container-canary.png'),full_page=True)
