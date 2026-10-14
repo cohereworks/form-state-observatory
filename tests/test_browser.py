@@ -188,6 +188,30 @@ def test_browser_observations(browser_name):
                 probes
               };
             }""")
+            page.evaluate('document.fonts.ready')
+            dynamic = page.locator('#dynamicSource')
+            series = []
+            for val in ('A','ABCDEFGH','A'):
+                dynamic.fill(val)
+                page.wait_for_timeout(140)
+                series.append(page.evaluate("""() => {
+                  const el = document.querySelector('#dynamicResult');
+                  const box = el.parentElement;
+                  const src = document.querySelector('#dynamicSource');
+                  return {
+                    sourceValue:src.value,
+                    sourceWidth:src.getBoundingClientRect().width,
+                    containerWidth:box.getBoundingClientRect().width,
+                    classification:getComputedStyle(el,'::before').content
+                  };
+                }"""))
+            report['cases']['dynamicContainerInvalidation'] = {
+                'series':series,
+                'widthResponded':series[1]['containerWidth'] > series[0]['containerWidth']+50,
+                'cssResponded':series[0]['classification']=='"unmatched"'
+                    and series[1]['classification']=='"matched"'
+                    and series[2]['classification']=='"unmatched"'
+            }
             page.screenshot(path=str(out/'container-canary.png'),full_page=True)
             page.goto(BASE_URL+'/experiments/font-state/v1/index.html',wait_until='load')
             page.screenshot(path=str(out/'font-state-v1.png'),full_page=True)
