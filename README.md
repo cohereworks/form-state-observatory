@@ -14,6 +14,7 @@ We distinguish *hypotheses*, *user-observed behavior*, *automated reproducibilit
 |---|---|---|
 | [`experiments/geometric-oracles/range-and-textarea.html`](experiments/geometric-oracles/range-and-textarea.html) | Anchor fallback predicates for range and textarea height | Spec-derived; not browser-verified |
 | [`experiments/geometric-oracles/live-text.html`](experiments/geometric-oracles/live-text.html) | Editable text → intrinsic geometry | Hypothesis; not cross-engine verified |
+| [`experiments/container-query/canary.html`](experiments/container-query/canary.html) | Static/dynamic anchored container-query invalidation matrix | Chromium/Firefox pass; WebKit dynamic invalidation diverges |
 | [`experiments/font-state/v1/`](experiments/font-state/v1/) | Metric, token, contextual, scroll/font probes | User reported #1, #3, #4 working; #2 classification incomplete |
 | [`experiments/font-state/v2/`](experiments/font-state/v2/) | Instrumented follow-up; `calt`, `ADDR` variable font and scroll-to-axis | HarfBuzz shaping verified; browser outcomes pending |
 
@@ -43,6 +44,10 @@ pytest -q tests --browser chromium
 ```
 
 GitHub Actions runs each browser separately and uploads structured JSON measurements, screenshots, execution traces and failures as artifacts. **A green workflow does not mean every experimental hypothesis passed**: unsupported and experimentally falsified features are recorded rather than hidden. The baseline tests (page, control mutation, and font generation) are gating.
+
+## First cross-engine evidence
+
+[2026-10-14 automated results](docs/results/2026-10-14-browser-evidence.md): native OpenType shaping and manual address gating work in Chromium, Firefox, and WebKit. Scroll-driven addressing works in Chromium and WebKit; Firefox lacks relevant scroll timeline prerequisites. WebKit's anchored container-query readouts fail to follow dynamic input geometry even though the geometry updates; [issue #2](https://github.com/cohereworks/form-state-observatory/issues/2) tracks the minimal reproduction. Green CI means evidence was captured, not that every browser supports every experimental feature.
 
 ## Governance
 
