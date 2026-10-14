@@ -46,6 +46,9 @@ jobs:
           else: raise RuntimeError('server not ready')
           PY
           pytest -q tests/test_browser.py --browser "$BROWSER"
+      - name: Publish per-engine observations
+        if: always()
+        run: python scripts/summarize_evidence.py artifacts/${{ matrix.browser }}/evidence.json >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve evidence regardless of result
         if: always()
         uses: actions/upload-artifact@v4
