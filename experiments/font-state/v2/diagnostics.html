@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Font-state diagnostic instrumentation</title>
+<style>:root{font:15px/1.45 system-ui;color-scheme:light dark}body{margin:1rem auto;max-width:80rem;padding:1rem}iframe{width:100%;height:45rem;border:2px solid #888;border-radius:.4rem}table{border-collapse:collapse;font:12px/1.35 ui-monospace,monospace;width:100%}th,td{border:1px solid #8886;text-align:start;padding:.4rem}th{position:sticky;top:0;background:Canvas}td{font-variant-numeric:tabular-nums}pre{white-space:pre-wrap;overflow-wrap:anywhere}#live{overflow:auto}small{opacity:.8}</style></head>
+<body><h1>Read-only diagnostics</h1><p>This page instruments the zero-JS experiment inside the iframe. <b>No mutation, no state syncing, no reading the input value for application behavior.</b> It only reads layout and computed styles for debugging.</p>
+<div id="live"><table><thead><tr><th>Probe</th><th>Font ready?</th><th>Input px</th><th>Meter px</th><th>CSS decode</th><th>Font variation settings</th></tr></thead><tbody id="rows"></tbody></table></div>
+<pre id="scroll"></pre><iframe id="demo" src="index.html" title="live CSS experiment"></iframe>
+<script>
+const ids=['metric','token','token-calt','context','address-manual','scroll-token-v2','address-scroll-v2'];
+const meters=['.metric-meter','.token-meter','.token-calt-meter','.context-meter','.address-manual-meter','.v2-scroll-meter','.v2-address-meter'];
+const frame=document.getElementById('demo');
+function tick(){
+ try{
+ const d=frame.contentDocument;if(!d?.body)return;
+ let out='';
+ for(let i=0;i<ids.length;i++){
+ const el=d.getElementById(ids[i]);const meter=d.querySelector(meters[i]);if(!el||!meter)continue;
+ const style=getComputedStyle(el);let decoded='—';const readout=meter.querySelector('.readout');if(readout){decoded=getComputedStyle(readout,'::before').content;}
+ const fontReady=d.fonts.check(`${Math.max(1,Math.floor(parseFloat(style.fontSize)))}px ${JSON.stringify(style.fontFamily.split(',')[0].replaceAll('"',''))}`);
+ const rounded=n=>n.toFixed(2);
+ out+=`<tr><td>${ids[i]}</td><td>${fontReady}</td><td>${rounded(el.getBoundingClientRect().width)}</td><td>${rounded(meter.getBoundingClientRect().width)}</td><td>${decoded.replaceAll('<','&lt;')}</td><td>${style.fontVariationSettings}</td></tr>`;
+ }
+ document.getElementById('rows').innerHTML=out;
+ const box=d.querySelector('.v2-scrollbox'),progress=d.querySelector('.v2-progress > div');
+ if(box){document.getElementById('scroll').textContent=JSON.stringify({scrollLeft:box.scrollLeft,scrollMax:box.scrollWidth-box.clientWidth,progressWidth:progress?.getBoundingClientRect().width,progressAnimations:progress?.getAnimations().length,featureSupport:{fieldSizing:CSS.supports('field-sizing:content'),anchorSize:CSS.supports('width:anchor-size(--test width,1px)'),timeline:CSS.supports('animation-timeline:scroll()'),timelineScope:CSS.supports('timeline-scope:--test'),fontVariations:CSS.supports('font-variation-settings:"ADDR" 2')}},null,2);}
+ }catch(err){document.getElementById('scroll').textContent=String(err)}
+}
+setInterval(tick,150);frame.addEventListener('load',tick);
+</script></body></html>

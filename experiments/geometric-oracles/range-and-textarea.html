@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSS Form-State Oracles</title>
+<style>
+  * { box-sizing: border-box; }
+  :root { font-family: system-ui, sans-serif; }
+  body { margin: 0; min-height: 100vh; }
+
+  /*
+    PROBE A — finite range value, inferred without reading input.value.
+
+    Geometry for this fixed lab:
+      slider left  = 24px
+      slider width = 320px
+      thumb width  = 20px
+      thumb centers for values 0..4 = 34, 109, 184, 259, 334px
+      comparison thresholds          = 71.5, 146.5, 221.5, 296.5px
+
+    Each invisible probe ends at the live thumb center and extends left by
+    its threshold width. If that would cross the viewport's left edge,
+    position-try flips it inline. anchored() turns that fallback choice into
+    a Boolean predicate. Cascading four predicates reconstructs 5 states.
+  */
+
+  #duration {
+    position: fixed;
+    left: 24px;
+    top: 82px;
+    width: 320px;
+    height: 20px;
+    margin: 0;
+    appearance: none;
+    background: transparent;
+    z-index: 10;
+  }
+
+  #duration::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: #bbb;
+  }
+
+  #duration::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+    border-radius: 50%;
+    background: #222;
+    anchor-name: --duration-thumb;
+  }
+
+  /* Firefox can style the thumb, but thumb-as-anchor interoperability has
+     lagged Chromium. This rule is included for engines that support it. */
+  #duration::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    background: #222;
+    anchor-name: --duration-thumb;
+  }
+
+  .r-probe {
+    position: fixed;
+    position-anchor: --duration-thumb;
+    right: anchor(--duration-thumb center);
+    top: anchor(--duration-thumb bottom);
+    height: 1px;
+    position-try-fallbacks: flip-inline;
+    container-type: anchored;
+    pointer-events: none;
+  }
+  .r35 { width: 296.5px; container-name: r35; }
+  .r25 { width: 221.5px; container-name: r25; }
+  .r15 { width: 146.5px; container-name: r15; }
+  .r05 { width:  71.5px; container-name: r05; }
+
+  /*
+    PROBE B — textarea row count, inferred from geometry.
+
+    field-sizing:content makes the textarea's height grow with its text.
+    Fixed top=210px, line-height=24px, zero padding/border gives nominal
+    bottoms 234,258,282,306,330... for 1,2,3,4,5... lines.
+    Probes ending at the textarea bottom test the halfway thresholds.
+  */
+
+  #people {
+    position: fixed;
+    left: 390px;
+    top: 210px;
+    width: 22ch;
+    min-height: 1lh;
+    max-height: 12lh;
+    padding: 0;
+    border: 0;
+    outline: 1px solid #aaa;
+    font: 16px/24px ui-monospace, monospace;
+    white-space: pre;
+    overflow: hidden;
+    resize: none;
+    field-sizing: content;
+    anchor-name: --people-box;
+    z-index: 10;
+  }
+
+  .l-probe {
+    position: fixed;
+    position-anchor: --people-box;
+    left: anchor(--people-box right);
+    bottom: anchor(--people-box bottom);
+    width: 1px;
+    position-try-fallbacks: flip-block;
+    container-type: anchored;
+    pointer-events: none;
+  }
+  .l45 { height: 318px; container-name: l45; }
+  .l35 { height: 294px; container-name: l35; }
+  .l25 { height: 270px; container-name: l25; }
+  .l15 { height: 246px; container-name: l15; }
+
+  /* The probes are nested so the one real UI is a descendant of every query
+     container. position:fixed keeps each probe viewport-relative. */
+  .ui {
+    position: fixed;
+    inset: 0;
+    padding: 24px;
+    pointer-events: auto;
+    --duration-label: "90 minutes"; /* default = maximum state */
+    --people-count: "5+";
+  }
+
+  /* High threshold first, low threshold last. For a low slider value several
+     predicates are true; ordinary cascade selects the nearest lower interval. */
+  @container r35 anchored(fallback: flip-inline) {
+    .ui { --duration-label: "75 minutes"; }
+  }
+  @container r25 anchored(fallback: flip-inline) {
+    .ui { --duration-label: "60 minutes"; }
+  }
+  @container r15 anchored(fallback: flip-inline) {
+    .ui { --duration-label: "45 minutes"; }
+  }
+  @container r05 anchored(fallback: flip-inline) {
+    .ui { --duration-label: "30 minutes"; }
+  }
+
+  @container l45 anchored(fallback: flip-block) {
+    .ui { --people-count: "4"; }
+  }
+  @container l35 anchored(fallback: flip-block) {
+    .ui { --people-count: "3"; }
+  }
+  @container l25 anchored(fallback: flip-block) {
+    .ui { --people-count: "2"; }
+  }
+  @container l15 anchored(fallback: flip-block) {
+    .ui { --people-count: "1"; }
+  }
+
+  .panel {
+    width: min(720px, calc(100vw - 48px));
+    padding: 18px;
+    border: 1px solid #ccc;
+    border-radius: 12px;
+  }
+  .panel + .panel { margin-top: 18px; }
+  h1 { margin: 0 0 18px; font-size: 1.35rem; }
+  h2 { margin: 0 0 8px; font-size: 1rem; }
+  p { margin: 6px 0; }
+  .spacer-a { height: 82px; }
+  .spacer-b { height: 160px; }
+  .duration-value::after { content: var(--duration-label); font-weight: 700; }
+  .people-value::after { content: var(--people-count); font-weight: 700; }
+  code { font-family: ui-monospace, monospace; }
+</style>
+</head>
+<body>
+
+<input id="duration" type="range" min="0" max="4" step="1" value="2" aria-label="Meeting duration">
+<textarea id="people" aria-label="Invitees">Alice</textarea>
+
+<!-- Range comparator chain -->
+<div class="r-probe r35"><div class="r-probe r25"><div class="r-probe r15"><div class="r-probe r05">
+  <!-- Textarea-cardinality comparator chain -->
+  <div class="l-probe l45"><div class="l-probe l35"><div class="l-probe l25"><div class="l-probe l15">
+    <main class="ui">
+      <h1>CSS form-state oracle lab — zero JavaScript</h1>
+
+      <section class="panel">
+        <h2>A. Read a finite range without reading its value</h2>
+        <p>Drag the native range at the top. Decoded state: <span class="duration-value"></span></p>
+        <p>The decoder observes thumb geometry via CSS anchors and converts four overflow/fallback tests into five discrete states.</p>
+        <div class="spacer-a"></div>
+      </section>
+
+      <section class="panel">
+        <h2>B. Read textarea list cardinality without reading its text</h2>
+        <p>Add/remove newline-delimited names in the textarea. Inferred row count: <span class="people-value"></span></p>
+        <p><code>field-sizing: content</code> exposes line growth as box geometry; anchored fallback tests discretize that geometry.</p>
+        <p>This recovers cardinality, not the individual line strings. CSS still cannot perform a true <code>car</code>/<code>cdr</code> over textarea contents.</p>
+        <div class="spacer-b"></div>
+      </section>
+    </main>
+  </div></div></div></div>
+</div></div></div></div>
+
+</body>
+</html>

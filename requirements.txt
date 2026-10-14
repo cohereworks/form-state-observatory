@@ -1,0 +1,4 @@
+fonttools>=4.59,<5
+brotli>=1.1,<2
+pytest>=8,<10
+playwright>=1.55,<2

@@ -1,0 +1,58 @@
+name: Browser evidence
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    name: Playwright / ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - run: python -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Generate reproducible test fonts
+        run: |
+          python experiments/font-state/v2/generate_fonts.py
+          cp -r experiments/font-state/v2/generated experiments/font-state/v1/generated
+      - name: Verify generated font tables
+        run: pytest -q tests/test_fonts.py
+      - name: Run browser evidence capture
+        env:
+          BROWSER: ${{ matrix.browser }}
+          CI: 'true'
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          python - <<'PY'
+          import urllib.request,time
+          for _ in range(40):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:8765/experiments/font-state/v2/index.html',timeout=1)
+                  break
+              except Exception: time.sleep(.25)
+          else: raise RuntimeError('server not ready')
+          PY
+          pytest -q tests/test_browser.py --browser "$BROWSER"
+      - name: Preserve evidence regardless of result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-evidence-${{ matrix.browser }}
+          path: |
+            artifacts/
+            server.log
+          if-no-files-found: warn
+          retention-days: 30

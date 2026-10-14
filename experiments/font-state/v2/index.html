@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CSS live-state font probes v2</title>
+<style>
+@font-face { font-family: ProbeMetric; src: url("generated/ProbeMetric.woff2") format("woff2"); }
+@font-face { font-family: ProbeToken; src: url("generated/ProbeToken.woff2") format("woff2"); }
+@font-face { font-family: ProbeContext; src: url("generated/ProbeContext.woff2") format("woff2"); }
+@font-face { font-family: ProbeTokenContext; src: url("generated/ProbeTokenContext.woff2") format("woff2"); }
+@font-face { font-family: ProbeAddress; src: url("generated/ProbeAddress.woff2") format("woff2"); }
+
+* { box-sizing: border-box; }
+:root { font-family: system-ui, sans-serif; color-scheme: light dark; }
+body { max-width: 62rem; margin: 0 auto; padding: 2rem; line-height: 1.45; }
+h1 { margin-block: 0 .25rem; }
+.intro { max-width: 52rem; opacity: .8; margin-block-end: 2rem; }
+.grid { display: grid; gap: 1.5rem; }
+.card { position: relative; border: 1px solid currentColor; border-radius: .75rem; padding: 1.25rem; min-block-size: 12rem; overflow: visible; }
+.card h2 { margin-block-start: 0; font-size: 1.1rem; }
+.card p { max-width: 50rem; }
+label { display: block; font-weight: 650; margin-block-end: .5rem; }
+code { font-family: ui-monospace, monospace; }
+.probe-input {
+  appearance: none;
+  display: inline-block;
+  field-sizing: content;
+  min-inline-size: 0;
+  max-inline-size: none;
+  inline-size: auto;
+  padding: 0;
+  border: 0;
+  border-block-end: 2px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  outline-offset: .25rem;
+  font-synthesis: none;
+  white-space: pre;
+}
+.help { font-size: .9rem; opacity: .72; }
+
+/* The meter is an independently queryable box whose width is copied from the
+   live form control via anchor-size().  No value/attribute is read. */
+.meter {
+  position: absolute;
+  block-size: 2.2rem;
+  border-block-start: 2px solid currentColor;
+  container-type: inline-size;
+  margin-block-start: .6rem;
+}
+.meter::after {
+  content: "";
+  position: absolute;
+  inset-block-start: -5px;
+  inset-inline: 0;
+  border-inline: 2px solid currentColor;
+  block-size: 9px;
+}
+.readout { position: absolute; inset-block-start: .35rem; inset-inline-start: 0; white-space: nowrap; font: 600 .85rem/1 system-ui,sans-serif; }
+.readout::before { content: "unclassified"; }
+
+#metric { anchor-name: --metric; font-family: ProbeMetric; font-size: 16px; line-height: 1; font-kerning: none; font-variant-ligatures: none; }
+.metric-meter { position-anchor: --metric; position-area: bottom; inline-size: anchor-size(--metric width, 0px); container-name: metric; }
+@container metric (min-width: 8px) and (max-width: 23px)   { .readout::before { content: "1 glyph"; } }
+@container metric (min-width: 24px) and (max-width: 39px)  { .readout::before { content: "2 glyphs"; } }
+@container metric (min-width: 40px) and (max-width: 55px)  { .readout::before { content: "3 glyphs"; } }
+@container metric (min-width: 56px) and (max-width: 71px)  { .readout::before { content: "4 glyphs"; } }
+@container metric (min-width: 72px) and (max-width: 87px)  { .readout::before { content: "5 glyphs"; } }
+@container metric (min-width: 88px) and (max-width: 103px) { .readout::before { content: "6 glyphs"; } }
+@container metric (min-width: 104px) and (max-width: 119px){ .readout::before { content: "7 glyphs"; } }
+@container metric (min-width: 120px) and (max-width: 135px){ .readout::before { content: "8 glyphs"; } }
+
+#token { anchor-name: --token; font-family: ProbeToken; font-size: 12px; line-height: 1; font-feature-settings: "liga" 1; font-kerning: none; }
+.token-meter { position-anchor: --token; position-area: bottom; inline-size: anchor-size(--token width, 0px); container-name: token; }
+@container token (min-width: 82px) and (max-width: 112px)  { .readout::before { content: "decoded: ALICE (8em)"; } }
+@container token (min-width: 130px) and (max-width: 160px) { .readout::before { content: "decoded: BOB (12em)"; } }
+@container token (min-width: 178px) and (max-width: 208px) { .readout::before { content: "decoded: CAROL (16em)"; } }
+@container token (min-width: 226px) and (max-width: 256px) { .readout::before { content: "decoded: DAVE (20em)"; } }
+
+#context { anchor-name: --context; font-family: ProbeContext; font-size: 10px; line-height: 1; font-feature-settings: "calt" 1; font-kerning: none; }
+.context-meter { position-anchor: --context; position-area: bottom; inline-size: anchor-size(--context width, 0px); container-name: context; }
+@container context (min-width: 18px) and (max-width: 21px)  { .readout::before { content: "decoded: ^ sentinel only"; } }
+@container context (min-width: 22px) and (max-width: 27px)  { .readout::before { content: "decoded: ^A = 2.5em"; } }
+@container context (min-width: 28px) and (max-width: 32px)  { .readout::before { content: "decoded: ^B = 3em"; } }
+@container context (min-width: 33px) and (max-width: 39px)  { .readout::before { content: "decoded: ^C = 3.5em"; } }
+@container context (min-width: 46px) and (max-width: 55px)  { .readout::before { content: "decoded: ^BA = 5em"; } }
+@container context (min-width: 61px) and (max-width: 70px)  { .readout::before { content: "decoded: ^AB = 6.5em"; } }
+@container context (min-width: 145px) and (max-width: 165px){ .readout::before { content: "decoded: ^CBA = 15.5em"; } }
+@container context (min-width: 292px) and (max-width: 318px){ .readout::before { content: "decoded: ^ABC = 30.5em"; } }
+
+/* Scroll + font geometry composition. The scroll timeline changes font-size;
+   ProbeToken turns ALICE into an 8em-wide glyph, therefore measured width is
+   8 × the scroll-controlled font size. This is deliberately a two-channel
+   geometry computation, not a value read. */
+.scrollbox {
+  inline-size: min(34rem, 100%);
+  block-size: 7rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-timeline-name: --address-scroll;
+  scroll-timeline-axis: inline;
+  border: 1px solid currentColor;
+  position: relative;
+}
+.track { display: flex; inline-size: 400%; block-size: 100%; }
+.snap { flex: 0 0 25%; scroll-snap-align: start; display: grid; place-items: end center; padding: .5rem; opacity: .5; }
+.scroll-token {
+  position: sticky;
+  inset-inline-start: 1rem;
+  inset-block-start: 1rem;
+  anchor-name: --scroll-token;
+  appearance: none;
+  field-sizing: content;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  border-block-end: 2px solid currentColor;
+  background: Canvas;
+  color: CanvasText;
+  font-family: ProbeToken;
+  font-feature-settings: "liga" 1;
+  font-kerning: none;
+  animation: scroll-font-scale linear both;
+  animation-timeline: --address-scroll;
+}
+@keyframes scroll-font-scale {
+  0%      { font-size: 8px; }
+  33.333% { font-size: 12px; }
+  66.667% { font-size: 16px; }
+  100%    { font-size: 20px; }
+}
+.scroll-meter {
+  position: absolute;
+  position-anchor: --scroll-token;
+  position-area: bottom;
+  inline-size: anchor-size(--scroll-token width, 0px);
+  block-size: 1rem;
+  border-block-start: 2px solid currentColor;
+}
+
+.support { margin-block-start: 2rem; padding: 1rem; border: 1px dashed currentColor; }
+@supports not (field-sizing: content) { .support::after { content: " field-sizing:content missing."; } }
+@supports not (width: anchor-size(--x width, 1px)) { .support::after { content: " anchor-size() missing."; } }
+
+/* v2: compare liga and calt on a separate editable control. */
+#token-calt { anchor-name: --token-calt; font-family: ProbeTokenContext; font-size: 12px; line-height: 1; font-feature-settings: "calt" 1; font-kerning: none; }
+.token-calt-meter { position-anchor: --token-calt; position-area: bottom; inline-size: anchor-size(--token-calt width, 0px); container-name: token-calt; }
+@container token-calt (min-width: 82px) and (max-width: 112px) { .readout::before { content: "ALICE: 8em"; } }
+@container token-calt (min-width: 130px) and (max-width: 160px) { .readout::before { content: "BOB: 12em"; } }
+@container token-calt (min-width: 178px) and (max-width: 208px) { .readout::before { content: "CAROL: 16em"; } }
+@container token-calt (min-width: 226px) and (max-width: 256px) { .readout::before { content: "DAVE: 20em"; } }
+
+/* v2 manual FeatureVariations axis: note ALL address states use the SAME input string. */
+.address-panel { padding: .75rem; border: 1px solid #8887; border-radius: .5rem; position: relative; min-block-size: 9rem; }
+.address-panel .options { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; margin:0 0 1rem; }
+.address-panel .options label { display:inline; font-weight:400; margin:0; }
+#address-manual { anchor-name: --address-manual; font-family:ProbeAddress; font-size:12px; line-height:1; font-feature-settings: "calt" 1, "rclt" 1; font-variation-settings: "ADDR" 0; }
+.address-panel:has(#addr-1:checked) #address-manual { font-variation-settings: "ADDR" 1; }
+.address-panel:has(#addr-2:checked) #address-manual { font-variation-settings: "ADDR" 2; }
+.address-panel:has(#addr-3:checked) #address-manual { font-variation-settings: "ADDR" 3; }
+.address-manual-meter { position-anchor: --address-manual; position-area: bottom; inline-size: anchor-size(--address-manual width, 0px); container-name: address-manual; }
+@container address-manual (min-width: 44px) and (max-width: 74px) { .readout::before { content:"ADDR=1: character A (5em)"; } }
+@container address-manual (min-width: 92px) and (max-width: 122px) { .readout::before { content:"ADDR=2: character B (9em)"; } }
+@container address-manual (min-width: 140px) and (max-width: 170px) { .readout::before { content:"ADDR=3: character C (13em)"; } }
+
+/* v2 clean scroll timeline: scroller and animated font are siblings under timeline-scope.
+   This avoids animated input changing scrollable layout or scroll range. */
+.v2-scroll-scope { timeline-scope: --v2-scroll; inline-size:min(34rem,100%); }
+.v2-scrollbox { overflow-x:scroll; overflow-y:hidden; scroll-timeline: --v2-scroll inline; scroll-snap-type:x mandatory; overscroll-behavior-inline: contain; block-size:5.5rem; border:1px solid currentColor; }
+.v2-scrolltrack { display:flex; inline-size:400%; block-size:100%; }
+.v2-scrolltrack > div { flex:0 0 25%; display:grid; place-items:center; scroll-snap-align:start; border-inline-start:1px dashed #8887; }
+.v2-progress { margin-block-start: .5rem; block-size:.75rem; border:1px solid #888; }
+.v2-progress > div { inline-size:0%; block-size:100%; background:currentColor; animation: v2-progress 1s linear both; animation-timeline:--v2-scroll; }
+@keyframes v2-progress { from {inline-size:0%} to {inline-size:100%} }
+.v2-scroll-readout { position:relative; min-block-size:5.5rem; margin-block-start:.6rem; }
+#scroll-token-v2 { anchor-name: --scroll-token-v2; font-family:ProbeTokenContext; font-feature-settings:"calt" 1; font-size:8px; animation:v2-scroll-scale 1s linear both; animation-timeline:--v2-scroll; }
+@keyframes v2-scroll-scale { from {font-size:8px} to {font-size:20px} }
+.v2-scroll-meter { position-anchor:--scroll-token-v2; position-area:bottom; inline-size:anchor-size(--scroll-token-v2 width, 0px); }
+#address-scroll-v2 { anchor-name: --address-scroll-v2; font-family:ProbeAddress; font-size:12px; font-feature-settings:"calt" 1, "rclt" 1; font-variation-settings:"ADDR" 0; animation:v2-address 1s linear both; animation-timeline:--v2-scroll; }
+@keyframes v2-address { 0% {font-variation-settings:"ADDR" 0} 33.333% {font-variation-settings:"ADDR" 1} 66.667% {font-variation-settings:"ADDR" 2} 100% {font-variation-settings:"ADDR" 3} }
+.v2-address-meter { position-anchor:--address-scroll-v2; position-area:bottom; inline-size:anchor-size(--address-scroll-v2 width, 0px); container-name:address-scroll; }
+@container address-scroll (min-width:44px) and (max-width:74px) { .readout::before {content:"1 → A";} }
+@container address-scroll (min-width:92px) and (max-width:122px) { .readout::before {content:"2 → B";} }
+@container address-scroll (min-width:140px) and (max-width:170px) { .readout::before {content:"3 → C";} }
+.v2-fields { display:flex; gap:2rem; align-items:start; flex-wrap:wrap; }
+.v2-fields > div { flex:1 1 12rem; }
+.v2-fields label {font-size:.8rem; opacity:.75;}
+.warning { font-size:.85rem; }
+@supports not (animation-timeline: scroll()) {.v2-scroll-scope::after{content:"scroll-driven animations unsupported";color:#b55;}}
+
+</style>
+</head>
+<body>
+<h1>CSS live-state font probes v2</h1>
+<p class="intro">Zero JavaScript. Editable form state is transformed by OpenType shaping into deterministic geometry; CSS copies that geometry with <code>anchor-size()</code> and classifies it using container queries.</p>
+
+<div class="grid">
+<section class="card">
+  <h2>1 — Metric probe: live character count</h2>
+  <p>Every printable ASCII glyph has exactly a 1em advance. Change the text; the meter classifies the live intrinsic width.</p>
+  <label for="metric">Type 1–8 ASCII characters</label>
+  <input class="probe-input" id="metric" value="HELLO" autocomplete="off" spellcheck="false">
+  <div class="meter metric-meter"><output class="readout"></output></div>
+</section>
+
+<section class="card">
+  <h2>2 — Token probe: text → number</h2>
+  <p>GSUB ligatures collapse known strings to synthetic glyphs whose <code>hmtx</code> advances are 8/12/16/20em. Try <code>ALICE</code>, <code>BOB</code>, <code>CAROL</code>, or <code>DAVE</code>.</p>
+  <label for="token">Token</label>
+  <input class="probe-input" id="token" value="ALICE" autocomplete="off" autocapitalize="characters" spellcheck="false">
+  <div class="meter token-meter"><output class="readout"></output></div>
+</section>
+
+<section class="card">
+  <h2>3 — Context probe: ordered bounded string → number</h2>
+  <p>Contextual substitutions assign different advances by position. The mapping is injective for <code>^[ABC]{1,3}</code>. In particular, order changes the result.</p>
+  <label for="context">Try ^AB vs ^BA, or ^ABC vs ^CBA</label>
+  <input class="probe-input" id="context" value="^AB" pattern="\^[ABC]{1,3}" maxlength="4" autocomplete="off" spellcheck="false">
+  <div class="meter context-meter"><output class="readout"></output></div>
+</section>
+
+<section class="card" style="min-block-size:15rem">
+  <h2>4 (legacy) — Scroll × font geometry</h2>
+  <p>The fixed token <code>ALICE</code> shapes to 8em. Horizontal scroll progress drives its font size from 8px → 20px, so its live width computes <code>8 × scroll-scale</code>. Snap through the four positions.</p>
+  <div class="scrollbox">
+    <input class="scroll-token" value="ALICE" readonly aria-label="encoded scroll token">
+    <div class="scroll-meter" aria-hidden="true"></div>
+    <div class="track">
+      <div class="snap">0</div><div class="snap">1</div><div class="snap">2</div><div class="snap">3</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="grid" style="margin-block-start:1.5rem">
+<section class="card">
+  <h2>2b — Token ligature under <code>calt</code> instead of <code>liga</code></h2>
+  <p>Same font advances as #2, different OpenType feature. This isolates whether editable controls suppress normal ligatures near the caret.</p>
+  <label for="token-calt">Type ALICE, BOB, CAROL, DAVE</label>
+  <input class="probe-input" id="token-calt" value="ALICE" autocomplete="off" spellcheck="false">
+  <div class="meter token-calt-meter"><output class="readout"></output></div>
+</section>
+<section class="card">
+  <h2>5 — Variable font addressing (manual, no scrolling)</h2>
+  <p>A single input stores <code>^ABC</code>. The variable-font <code>ADDR</code> axis instructs OpenType to zero out every positional glyph <em>except</em> the addressed one. Expected widths: 5em (A), 9em (B), 13em (C).</p>
+  <div class="address-panel">
+    <div class="options">
+      <input type="radio" id="addr-1" name="addr" checked><label for="addr-1">Address 1</label>
+      <input type="radio" id="addr-2" name="addr"><label for="addr-2">Address 2</label>
+      <input type="radio" id="addr-3" name="addr"><label for="addr-3">Address 3</label>
+    </div>
+    <label for="address-manual">Value (try editing A/B/C while preserving the ^ prefix)</label>
+    <input class="probe-input" id="address-manual" value="^ABC" spellcheck="false" autocomplete="off">
+    <div class="meter address-manual-meter"><output class="readout"></output></div>
+  </div>
+</section>
+<section class="card">
+  <h2>6 — Isolated scroll → font axis → glyph width</h2>
+  <p>Scroll this strip between its four snap positions. First inspect the progress bar, <em>then</em> the font measurements. Both inputs are outside the scroller, so their width cannot alter its scroll range.</p>
+  <div class="v2-scroll-scope">
+    <div class="v2-scrollbox" tabindex="0" aria-label="Scroll-address choices">
+      <div class="v2-scrolltrack"><div>0</div><div>1</div><div>2</div><div>3</div></div>
+    </div>
+    <div class="v2-progress"><div></div></div>
+    <div class="v2-scroll-readout">
+      <div class="v2-fields">
+        <div><label for="scroll-token-v2">Scale probe (ALICE, 8em)</label>
+          <input class="probe-input" id="scroll-token-v2" value="ALICE" readonly>
+          <div class="meter v2-scroll-meter"></div>
+        </div>
+        <div><label for="address-scroll-v2">Address probe (^ABC; expected A/B/C)</label>
+          <input class="probe-input" id="address-scroll-v2" value="^ABC" readonly>
+          <div class="meter v2-address-meter"><output class="readout"></output></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+<p class="warning">For measured widths, font load state, scroll offsets and computed axis values, open <a href="diagnostics.html">diagnostics.html</a>. That separate page uses read-only JavaScript for instrumentation; this page has none.</p>
+<div class="support"><strong>Feature canary.</strong> If a probe does not react, inspect support for <code>field-sizing</code>, anchor positioning/<code>anchor-size()</code>, container queries, and scroll-driven animations before blaming the font.</div>
+</body>
+</html>

@@ -1,0 +1,207 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>CSS live form-state probes v2</title>
+<style>
+  :root { font-family: system-ui, sans-serif; line-height: 1.45; }
+  body { max-width: 900px; margin: 2rem auto; padding: 0 1rem 4rem; }
+  section { margin: 2.5rem 0; padding: 1rem; border: 1px solid; border-radius: .5rem; }
+  code, pre, input, textarea { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .note { opacity: .75; }
+  .row { display: flex; gap: 1rem; align-items: start; flex-wrap: wrap; }
+  .readout { min-width: 18rem; }
+
+  /* ------------------------------------------------------------
+     PROBE 1: live single-line text -> geometry -> CSS predicates
+     ------------------------------------------------------------ */
+  #scalar {
+    appearance: none;
+    field-sizing: content;
+    font: 20px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: 0;
+    padding: 0;
+    border: 0;
+    outline: 1px solid;
+    min-inline-size: 1px;
+    max-inline-size: none;
+    anchor-name: --scalar;
+  }
+
+  .scalar-proxy {
+    font: 20px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    position: absolute;
+    position-anchor: --scalar;
+    inline-size: anchor-size(--scalar width);
+    block-size: 1rem;
+    container-type: inline-size;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  .scalar-readout::after { content: "≈ 0 chars"; }
+  @container (width >= .5ch)  { .scalar-readout::after { content: "≈ 1+ chars"; } }
+  @container (width >= 1.5ch) { .scalar-readout::after { content: "≈ 2+ chars"; } }
+  @container (width >= 2.5ch) { .scalar-readout::after { content: "≈ 3+ chars"; } }
+  @container (width >= 3.5ch) { .scalar-readout::after { content: "≈ 4+ chars"; } }
+  @container (width >= 4.5ch) { .scalar-readout::after { content: "≈ 5+ chars"; } }
+  @container (width >= 5.5ch) { .scalar-readout::after { content: "≈ 6+ chars"; } }
+  @container (width >= 6.5ch) { .scalar-readout::after { content: "≈ 7+ chars"; } }
+  @container (width >= 7.5ch) { .scalar-readout::after { content: "≈ 8+ chars"; } }
+  @container (width >= 8.5ch) { .scalar-readout::after { content: "≈ 9+ chars"; } }
+  @container (width >= 9.5ch) { .scalar-readout::after { content: "≈ 10+ chars"; } }
+  @container (width >= 10.5ch){ .scalar-readout::after { content: "≈ 11+ chars"; } }
+  @container (width >= 11.5ch){ .scalar-readout::after { content: "≈ 12+ chars"; } }
+  @container (width >= 12.5ch){ .scalar-readout::after { content: "≈ 13+ chars"; } }
+  @container (width >= 13.5ch){ .scalar-readout::after { content: "≈ 14+ chars"; } }
+  @container (width >= 14.5ch){ .scalar-readout::after { content: "≈ 15+ chars"; } }
+  @container (width >= 15.5ch){ .scalar-readout::after { content: "≈ 16+ chars"; } }
+
+  /* ------------------------------------------------------------
+     PROBE 2: newline list -> height -> CSS-observable cardinality
+     ------------------------------------------------------------ */
+  #list {
+    appearance: none;
+    field-sizing: content;
+    font: 18px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    inline-size: 26ch;
+    min-inline-size: 26ch;
+    max-inline-size: 26ch;
+    min-block-size: 24px;
+    padding: 0;
+    border: 0;
+    outline: 1px solid;
+    resize: none;
+    overflow: hidden;
+    white-space: pre;
+    anchor-name: --list;
+  }
+
+  .list-proxy {
+    font: 18px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    position: absolute;
+    position-anchor: --list;
+    inline-size: 1rem;
+    block-size: anchor-size(--list height);
+    container-type: size;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  .list-readout::after { content: "≈ 1 row"; }
+  @container (height >= 36px)  { .list-readout::after { content: "≈ 2+ rows"; } }
+  @container (height >= 60px)  { .list-readout::after { content: "≈ 3+ rows"; } }
+  @container (height >= 84px)  { .list-readout::after { content: "≈ 4+ rows"; } }
+  @container (height >= 108px) { .list-readout::after { content: "≈ 5+ rows"; } }
+  @container (height >= 132px) { .list-readout::after { content: "≈ 6+ rows"; } }
+  @container (height >= 156px) { .list-readout::after { content: "≈ 7+ rows"; } }
+  @container (height >= 180px) { .list-readout::after { content: "≈ 8+ rows"; } }
+
+  /* ------------------------------------------------------------
+     PROBE 3: same textarea also leaks longest explicit line width
+     if allowed to shrinkwrap both axes.
+     ------------------------------------------------------------ */
+  #signature {
+    appearance: none;
+    field-sizing: content;
+    font: 18px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 0;
+    border: 0;
+    outline: 1px solid;
+    min-inline-size: 1ch;
+    min-block-size: 24px;
+    max-inline-size: 40ch;
+    max-block-size: 12lh;
+    resize: none;
+    white-space: pre;
+    anchor-name: --signature;
+  }
+
+  .sig-proxy {
+    font: 18px/24px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    position: absolute;
+    position-anchor: --signature;
+    inline-size: anchor-size(--signature width);
+    block-size: anchor-size(--signature height);
+    container-type: size;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .sig-lines::after { content: "rows≈1"; }
+  @container (height >= 36px) { .sig-lines::after { content: "rows≥2"; } }
+  @container (height >= 60px) { .sig-lines::after { content: "rows≥3"; } }
+  @container (height >= 84px) { .sig-lines::after { content: "rows≥4"; } }
+  @container (height >= 108px){ .sig-lines::after { content: "rows≥5"; } }
+  .sig-width::after { content: "max-line≈1"; }
+  @container (width >= 1.5ch) { .sig-width::after { content: "max-line≥2"; } }
+  @container (width >= 2.5ch) { .sig-width::after { content: "max-line≥3"; } }
+  @container (width >= 3.5ch) { .sig-width::after { content: "max-line≥4"; } }
+  @container (width >= 4.5ch) { .sig-width::after { content: "max-line≥5"; } }
+  @container (width >= 5.5ch) { .sig-width::after { content: "max-line≥6"; } }
+  @container (width >= 6.5ch) { .sig-width::after { content: "max-line≥7"; } }
+  @container (width >= 7.5ch) { .sig-width::after { content: "max-line≥8"; } }
+  @container (width >= 8.5ch) { .sig-width::after { content: "max-line≥9"; } }
+  @container (width >= 9.5ch) { .sig-width::after { content: "max-line≥10"; } }
+
+  /* ------------------------------------------------------------
+     PROBE 4: future primitive canary. No browser is expected to
+     implement this yet; CSS Forms currently says not ready.
+     ------------------------------------------------------------ */
+  .cv-status::after { content: "control-value(): not parsed here"; }
+  @supports (content: control-value()) {
+    .cv-status::after { content: "control-value(): parser says supported"; }
+    #future-range::after { content: control-value(); }
+  }
+
+  #future-range { display: block; inline-size: 20rem; }
+</style>
+
+<h1>CSS live form-state probes v2</h1>
+<p class="note">Core experiment contains no JavaScript. Type directly into the controls and watch whether the CSS-only readouts change.</p>
+
+<section>
+  <h2>1. Live text length → intrinsic width → container query</h2>
+  <p>Type 1–16 monospace characters:</p>
+  <div class="row">
+    <input id="scalar" autocomplete="off" placeholder="">
+    <div class="scalar-proxy"><strong class="scalar-readout"></strong></div>
+    <strong class="readout">The readout immediately below/overlapping the input is CSS-only.</strong>
+  </div>
+  <p class="note">If your browser supports <code>field-sizing: content</code> + anchor sizing, the hidden proxy's width tracks the live control's width. This recovers a finite predicate over the live value without reading <code>.value</code>.</p>
+</section>
+
+<section>
+  <h2>2. Newline list cardinality → intrinsic height → container query</h2>
+  <p>Add/remove explicit lines. <code>wrap="off"</code> avoids visual wrapping becoming fake list members.</p>
+  <div class="row">
+    <textarea id="list" wrap="off" placeholder="Alice&#10;Bob&#10;Carol"></textarea>
+    <div class="list-proxy"><strong class="list-readout"></strong></div>
+    <strong class="readout">The row-count readout is CSS-only.</strong>
+  </div>
+  <p class="note">This demonstrates dynamic logical cardinality without adding/removing DOM nodes. It does not recover the individual strings.</p>
+</section>
+
+<section>
+  <h2>3. Textarea geometric signature</h2>
+  <p>Here both dimensions shrinkwrap. CSS can observe approximately <code>(row count, longest line length)</code>.</p>
+  <div class="row">
+    <textarea id="signature" wrap="off" placeholder="aaa&#10;bbbbbb"></textarea>
+    <div class="sig-proxy"><span class="sig-lines"></span> / <span class="sig-width"></span></div>
+    <strong class="readout">This is intentionally only an aggregate signature, not <code>car</code>/<code>cdr</code>.</strong>
+  </div>
+</section>
+
+<section>
+  <h2>4. CSS Forms future primitive canary</h2>
+  <p class="cv-status"></p>
+  <input id="future-range" type="range" min="0" max="100" value="25">
+  <p class="note">The September 2026 CSS Form Control Styling draft defines <code>control-value()</code>, but marks it “not ready for implementation.” This section is just a canary for future engines.</p>
+</section>
+
+<section>
+  <h2>Current boundary</h2>
+  <pre>live scalar text ──► geometry ──► finite predicates       YES
+newline cardinality ─► geometry ─► finite predicates      YES
+aggregate list signature (rows, max width)                 YES
+line N's actual text                                       NO
+split(value, "\\n") / line-at(value, n)                    NO
+future control-value()                                     SPECCED, NOT READY</pre>
+</section>
