@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en"><meta charset="utf-8"><title>Container-query isolation canary</title>
 <style>
+  @font-face {font-family:ProbeMetric;src:url("../font-state/v2/generated/ProbeMetric.woff2") format("woff2");}
+
   * { box-sizing: border-box; }
   body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; }
   .stage { position: relative; min-height: 115px; margin: 1rem 0; border-block-end: 1px dashed #888; }
@@ -15,6 +17,8 @@
   .anchor-width .box {position:absolute; top:32px; left:0; width:anchor-size(--aw width, 140px);}
   .anchor-both .source {anchor-name: --ab;}
   .anchor-both .box {position:absolute; position-anchor:--ab; position-area:bottom; width:anchor-size(--ab width, 140px);}
+  .dynamic .source { anchor-name:--dynamic; field-sizing:content; width:auto; min-width:0; max-width:none; height:auto; padding:0; border:0; font:16px/1 ProbeMetric, monospace; }
+  .dynamic .box {position:absolute;position-anchor:--dynamic;position-area:bottom;width:anchor-size(--dynamic width,0px);}
 </style>
 <h1>Container-query differential canaries</h1>
 <p>Every probe box should be 140px wide and show “matched”. All state is native CSS; no script.</p>
@@ -23,4 +27,5 @@
 <section class="stage anchor-pos"><h2>Anchor positioning, fixed width</h2><span class="source"></span><div class="box"><span class="result" id="anchorPosition"></span></div></section>
 <section class="stage anchor-width"><h2>Anchor-derived width, ordinary positioning</h2><span class="source"></span><div class="box"><span class="result" id="anchorWidth"></span></div></section>
 <section class="stage anchor-both"><h2>Anchor positioning and derived width</h2><span class="source"></span><div class="box"><span class="result" id="anchorBoth"></span></div></section>
+<section class="stage dynamic"><h2>Dynamic live form value → anchored width → container query</h2><input class="source" id="dynamicSource" value="ABCDEFGH" autocomplete="off" spellcheck="false" aria-label="Editable geometry source"><div class="box"><span class="result" id="dynamicResult"></span></div></section>
 </html>
