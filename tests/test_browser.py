@@ -49,7 +49,12 @@ def test_browser_observations(browser_name):
     out.mkdir(parents=True, exist_ok=True)
     report = {'browser':browser_name, 'cases':{}, 'consoleErrors':[], 'runtime':{}, 'sourceCommit':os.getenv('GITHUB_SHA'), 'operatingSystem':platform.platform()}
     with sync_playwright() as playwright:
-        browser = getattr(playwright, browser_name).launch(headless=True)
+        try:
+            browser = getattr(playwright, browser_name).launch(headless=True)
+        except Exception as exc:
+            report['fatal'] = {'stage':'browser launch', 'error':str(exc)}
+            (out/'evidence.json').write_text(json.dumps(report,indent=2,sort_keys=True),encoding='utf8')
+            raise
         page = browser.new_page(viewport={'width':1365,'height':950}, device_scale_factor=1)
         page.on('pageerror', lambda e: report['consoleErrors'].append(str(e)))
         report['browserVersion'] = browser.version
@@ -86,13 +91,46 @@ def test_browser_observations(browser_name):
             report['cases']['metricWidthChange'] = {'classification':classify(m8['inputWidth'] > m1['inputWidth'],support['fieldSizing']), 'deltaPx':m8['inputWidth']-m1['inputWidth']}
             report['cases']['metric'] = {'one':m1,'eight':m8,
                 'classification':classify('1 glyph' in (m1['decode'] or '') and '8 glyphs' in (m8['decode'] or ''),support['fieldSizing'] and support['anchorSize'])}
-            # Actual substitutions may depend on live-editor shaping policy.
-            for token in ('ALICE','BOB','CAROL','DAVE'):
-                page.locator('#token').fill(token)
-                page.locator('#token-calt').fill(token)
+            # The original user test showed live geometry changing while its
+            # decoding label stayed unclassified. Preserve both font geometry
+            # and CSS classification, with focus and caret effects isolated.
+            expected_token_em = {'ALICE':8,'BOB':12,'CAROL':16,'DAVE':20}
+            for token, em in expected_token_em.items():
+                liga = page.locator('#token')
+                calt = page.locator('#token-calt')
+                liga.fill(token)               # caret/focus inside liga editor
                 page.wait_for_timeout(100)
-                report['cases'].setdefault('tokenLiga',{})[token] = snapshot(page,'#token','.token-meter')
-                report['cases'].setdefault('tokenCalt',{})[token] = snapshot(page,'#token-calt','.token-calt-meter')
+                liga_focused = snapshot(page,'#token','.token-meter')
+                calt.fill(token)               # blurs liga; focuses calt
+                page.wait_for_timeout(100)
+                liga_blurred = snapshot(page,'#token','.token-meter')
+                calt_focused = snapshot(page,'#token-calt','.token-calt-meter')
+                calt.evaluate('(input) => input.blur()')
+                page.wait_for_timeout(100)
+                calt_blurred = snapshot(page,'#token-calt','.token-calt-meter')
+                report['cases'].setdefault('tokenLiga',{})[token] = {
+                    'focused':liga_focused,'blurred':liga_blurred}
+                report['cases'].setdefault('tokenCalt',{})[token] = {
+                    'focused':calt_focused,'blurred':calt_blurred}
+                # Distinguish shaping/measurement from the *CSS decoder*.
+                # An observed correct width + wrong content is a decoder error,
+                # whereas an incorrect width cannot establish decoder failure.
+                for mode, a, b in (('liga',liga_focused,liga_blurred),('calt',calt_focused,calt_blurred)):
+                    expected_px = em * 12
+                    shaped = abs(b['inputWidth'] - expected_px) <= 2
+                    decoded = token in (b['decode'] or '')
+                    report['cases'].setdefault('tokenAssessment',{}).setdefault(mode,{})[token] = {
+                        'expectedPx':expected_px,
+                        'focusedWidth':a['inputWidth'],
+                        'blurredWidth':b['inputWidth'],
+                        'focusEffectPx':a['inputWidth']-b['inputWidth'],
+                        'widthMatch':shaped,
+                        'cssDecoderMatch':decoded,
+                        'classification': ('inconclusive: font/geometry prerequisite unsupported'
+                           if not (support['fieldSizing'] and support['anchorSize'] and b['fontLoaded'])
+                           else 'observed: shaping and decoding' if shaped and decoded
+                           else 'observed: shaping; decoder failure' if shaped
+                           else 'not yet established: shaped geometry mismatch')}
             # Compare noncommutative results; record decoder value as separate evidence.
             for text in ('^','^A','^AB','^BA','^ABC','^CBA'):
                 page.locator('#context').fill(text)
