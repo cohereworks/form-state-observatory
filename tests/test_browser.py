@@ -38,7 +38,7 @@ def snapshot(page, selector, meter=None):
     }""", {'selector': selector, 'meter': meter})
 
 
-def classify(observed, expected, canary=True):
+def classify(observed, canary=True):
     if not canary:
         return 'inconclusive: prerequisite unsupported'
     return 'observed' if observed else 'falsified'
@@ -169,6 +169,21 @@ def test_browser_observations(browser_name):
                 'classification': classify(scroll['0']['address']['inputWidth'] != scroll['1']['address']['inputWidth'], support['timeline'] and support['variation']),
                 'startWidth':scroll['0']['address']['inputWidth'],'endWidth':scroll['1']['address']['inputWidth']}
             page.screenshot(path=str(out/'font-state-v2.png'), full_page=True)
+            # Independent canary separates generic named container-query support
+            # from font geometry, anchor-size, and the positioned meter layout.
+            page.goto(BASE_URL+'/experiments/container-query/canary.html',wait_until='load')
+            report['cases']['containerQueryCanary'] = page.evaluate("""() => {
+              let ordinary = document.querySelector('#ordinary');
+              let absolute = document.querySelector('#absolute');
+              return {
+                syntaxSupported:CSS.supports('container-type:inline-size'),
+                ordinaryValue:getComputedStyle(ordinary,'::before').content,
+                positionedValue:getComputedStyle(absolute,'::before').content,
+                ordinaryParentWidth:ordinary.parentElement.getBoundingClientRect().width,
+                positionedParentWidth:absolute.parentElement.getBoundingClientRect().width
+              };
+            }""")
+            page.screenshot(path=str(out/'container-canary.png'),full_page=True)
             page.goto(BASE_URL+'/experiments/font-state/v1/index.html',wait_until='load')
             page.screenshot(path=str(out/'font-state-v1.png'),full_page=True)
             page.goto(BASE_URL+'/experiments/geometric-oracles/range-and-textarea.html',wait_until='load')
