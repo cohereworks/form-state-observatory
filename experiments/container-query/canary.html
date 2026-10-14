@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Container-query isolation canary</title>
+<style>
+  .ordinary, .positioned { container: observed / inline-size; width: 140px; }
+  .ordinary { border: 1px solid; }
+  .relative { position: relative; height: 60px; }
+  .positioned { position: absolute; top: 0; left: 0; border: 1px solid; }
+  #ordinary::before, #absolute::before { content: "unmatched"; }
+  @container observed (min-width: 100px) {
+    #ordinary::before, #absolute::before { content: "matched"; }
+  }
+</style>
+<h1>Container-query isolation canary (no script)</h1>
+<p>Ordinary container: <span class="ordinary"><span id="ordinary"></span></span></p>
+<div class="relative"><div class="positioned"><span id="absolute"></span></div></div>
+</html>
