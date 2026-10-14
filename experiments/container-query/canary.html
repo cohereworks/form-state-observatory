@@ -1,16 +1,26 @@
 <!doctype html>
 <html lang="en"><meta charset="utf-8"><title>Container-query isolation canary</title>
 <style>
-  .ordinary, .positioned { container: observed / inline-size; width: 140px; }
-  .ordinary { border: 1px solid; }
-  .relative { position: relative; height: 60px; }
-  .positioned { position: absolute; top: 0; left: 0; border: 1px solid; }
-  #ordinary::before, #absolute::before { content: "unmatched"; }
-  @container observed (min-width: 100px) {
-    #ordinary::before, #absolute::before { content: "matched"; }
-  }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; max-width: 48rem; margin: 2rem auto; }
+  .stage { position: relative; min-height: 115px; margin: 1rem 0; border-block-end: 1px dashed #888; }
+  .box { display:block; container: observed / inline-size; width: 140px; border: 1px solid #888; min-height: 24px; }
+  .source { display:block; width:140px; height: 22px; background: #8884; }
+  .result::before {content:"unmatched";}
+  @container observed (min-width: 100px) { .result::before {content:"matched";} }
+  .absolute .box { position:absolute; top:32px; left:0; }
+  .anchor-pos .source {anchor-name: --ap;}
+  .anchor-pos .box {position:absolute; position-anchor:--ap; position-area:bottom;}
+  .anchor-width .source {anchor-name: --aw;}
+  .anchor-width .box {position:absolute; top:32px; left:0; width:anchor-size(--aw width, 140px);}
+  .anchor-both .source {anchor-name: --ab;}
+  .anchor-both .box {position:absolute; position-anchor:--ab; position-area:bottom; width:anchor-size(--ab width, 140px);}
 </style>
-<h1>Container-query isolation canary (no script)</h1>
-<p>Ordinary container: <span class="ordinary"><span id="ordinary"></span></span></p>
-<div class="relative"><div class="positioned"><span id="absolute"></span></div></div>
+<h1>Container-query differential canaries</h1>
+<p>Every probe box should be 140px wide and show “matched”. All state is native CSS; no script.</p>
+<section class="stage ordinary"><h2>Ordinary block</h2><div class="box"><span class="result" id="ordinary"></span></div></section>
+<section class="stage absolute"><h2>Absolute without anchor</h2><div class="box"><span class="result" id="absolute"></span></div></section>
+<section class="stage anchor-pos"><h2>Anchor positioning, fixed width</h2><span class="source"></span><div class="box"><span class="result" id="anchorPosition"></span></div></section>
+<section class="stage anchor-width"><h2>Anchor-derived width, ordinary positioning</h2><span class="source"></span><div class="box"><span class="result" id="anchorWidth"></span></div></section>
+<section class="stage anchor-both"><h2>Anchor positioning and derived width</h2><span class="source"></span><div class="box"><span class="result" id="anchorBoth"></span></div></section>
 </html>
